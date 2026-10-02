@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ClutchX - Admin Dashboard</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --bg:#07080b;
+  --card:#12151c;
+  --border:#1f2635;
+  --primary:#ff3038;
+  --green:#00e676;
+  --blue:#00e5ff;
+  --gold:#ffb703;
+  --text:#ffffff;
+  --muted:#8b93a5;
+}
+
+*{ margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,sans-serif; }
+body{ background:radial-gradient(circle at 10% 0%,rgba(255,48,56,.12),transparent 35%), var(--bg); color:var(--text); min-height:100vh; padding-bottom:50px; }
+.admin-container{ max-width:540px; margin:auto; padding:16px; }
+
+#admin-auth-view{
+  max-width:420px;
+  margin:70px auto 20px;
+  padding:32px 24px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:24px;
+  text-align:center;
+  box-shadow:0 10px 40px rgba(0,0,0,0.6);
+}
+.auth-shield-icon{
+  width:64px;
+  height:64px;
+  margin:0 auto 16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:rgba(255,48,56,0.15);
+  border:1px solid var(--primary);
+  color:var(--primary);
+  font-size:28px;
+}
+
+.topbar{ display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--border); margin-bottom:18px; }
+.topbar h2{ font-size:20px; font-weight:900; }
+.topbar h2 span{ color:var(--primary); }
+.badge-admin{ background:rgba(255,48,56,0.15); color:var(--primary); border:1px solid var(--primary); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:bold; }
+
+.nav-tabs{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:18px; }
+.tab-btn{ padding:10px 1px; background:var(--card); border:1px solid var(--border); border-radius:10px; color:var(--muted); font-weight:bold; font-size:9.5px; cursor:pointer; text-align:center; }
+.tab-btn.active{ background:var(--primary); color:#fff; border-color:var(--primary); }
+
+.card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:18px; }
+.card h3{ font-size:15px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+label{ font-size:11px; color:var(--muted); display:block; margin-bottom:4px; font-weight:bold; text-align:left; }
+input, select, textarea{ width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid var(--border); background:rgba(0,0,0,0.4); color:#fff; font-size:13px; outline:none; }
+input:focus, select:focus, textarea:focus{ border-color:var(--blue); }
+
+.btn-submit{ width:100%; padding:12px; background:var(--primary); color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:bold; cursor:pointer; }
+.btn-action{ background:var(--blue); color:#000; padding:8px 12px; border-radius:8px; border:none; font-size:11px; font-weight:bold; cursor:pointer; }
+.btn-danger{ background:#dc2626; color:#fff; padding:7px 10px; border-radius:8px; border:none; font-size:11px; font-weight:bold; cursor:pointer; }
+.btn-hacker-cancel{ width:100%; padding:10px; background:linear-gradient(135deg, #b91c1c, #ef4444); color:#fff; font-weight:900; font-size:11.5px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 14px rgba(239,68,68,0.35); margin-top:8px; }
+.btn-logout{ background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted); padding:5px 10px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; }
+
+.match-item{ background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:14px; }
+.match-banner-preview{ width:100%; height:130px; object-fit:cover; display:block; }
+.match-item-content{ padding:12px; }
+.room-box{ background:rgba(0,0,0,0.4); border:1px dashed var(--border); border-radius:10px; padding:10px; margin-top:8px; }
+
+.lb-table{ width:100%; border-collapse:collapse; margin:10px 0; font-size:12px; }
+.lb-table th, .lb-table td{ padding:8px; border:1px solid var(--border); text-align:center; }
+.lb-table th{ background:rgba(255,255,255,0.06); color:var(--muted); }
+
+.admin-toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(18,21,28,0.96); border:1px solid var(--border); color:#fff; padding:12px 20px; border-radius:14px; font-size:13px; z-index:999; box-shadow:0 8px 24px rgba(0,0,0,0.6); display:none; }
+
+.modal{ position:fixed; inset:0; z-index:200; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.7); backdrop-filter:blur(7px); }
+.modal.show{ display:flex; }
+.modal-box{ width:100%; max-width:480px; padding:20px; border-radius:24px 24px 0 0; background:#12151c; border:1px solid var(--border); max-height:85vh; overflow-y:auto; }
+</style>
+</head>
+
+<body>
+
+<!-- 2-FACTOR ADMIN LOGIN SCREEN -->
+<div id="admin-auth-view">
+  <div class="auth-shield-icon"><i class="fa-solid fa-user-shield"></i></div>
+  <h2 style="font-size:22px; font-weight:900; margin-bottom:6px;">Clutch<span style="color:var(--primary);">X</span> Admin</h2>
+  <p style="font-size:12px; color:var(--muted); margin-bottom:20px;">Enter Admin ID & Security PIN to access controls.</p>
+
+  <label>Admin User ID</label>
+  <input type="text" id="adminUserInp" placeholder="Enter User ID (amreshzx)" />
+
+  <label>Security PIN</label>
+  <input type="password" id="adminPinInp" placeholder="Enter PIN (amresh9341)" onkeypress="if(event.key==='Enter') AdminAuth.login()" />
+
+  <button class="btn-submit" style="margin-top:6px;" onclick="AdminAuth.login()">Unlock Dashboard</button>
+  <div id="authErrMsg" style="font-size:11px; color:var(--primary); margin-top:12px; display:none;">⚠️ Galat User ID ya Security PIN! Dubara koshish karein.</div>
+</div>
+
+<div class="admin-container" id="admin-dashboard-view" style="display:none;">
+
+  <div class="topbar">
+    <div>
+      <h2>Clutch<span>X</span> Control</h2>
+      <span class="badge-admin">MASTER ADMIN</span>
+    </div>
+    <button class="btn-logout" onclick="AdminAuth.logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('matches')"><i class="fa-solid fa-gamepad"></i> Matches</button>
+    <button class="tab-btn" onclick="switchTab('create')"><i class="fa-solid fa-plus"></i> Create</button>
+    <button class="tab-btn" onclick="switchTab('banners')"><i class="fa-solid fa-image"></i> Banner</button>
+    <button class="tab-btn" onclick="switchTab('results')"><i class="fa-solid fa-trophy"></i> Results</button>
+    <button class="tab-btn" onclick="switchTab('broadcast')"><i class="fa-solid fa-bullhorn"></i> Notice</button>
+    <button class="tab-btn" onclick="switchTab('payments')"><i class="fa-solid fa-receipt"></i> Deposits</button>
+    <button class="tab-btn" onclick="switchTab('withdrawals')"><i class="fa-solid fa-money-bill-transfer"></i> Payouts</button>
+  </div>
+
+  <!-- TAB 1: MATCHES -->
+  <div id="tab-matches">
+    <div class="card">
+      <h3><i class="fa-solid fa-fire" style="color:var(--primary);"></i> Active Matches</h3>
+      <div id="adminMatchList"><div style="text-align:center; padding:20px; color:var(--muted);">Loading matches...</div></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: CREATE MATCH -->
+  <div id="tab-create" style="display:none;">
+    <div class="card">
+      <h3><i class="fa-solid fa-plus-circle" style="color:var(--primary);"></i> Host Tournament</h3>
+      
+      <label>Banner Image URL (Poster) - Optional</label>
+      <input type="text" id="mImage" placeholder="https://i.ibb.co/... (Khali chhodne par auto banner lagega)" />
+
+      <label>Match Title</label>
+      <input type="text" id="mTitle" placeholder="e.g. Bermuda Battle Royale Pro League" />
+
+      <div class="grid-2">
+        <div>
+          <label>Game Mode</label>
+          <select id="mMode" onchange="Admin.onModeChange(this.value)">
+            <option value="Battle Royale">Battle Royale (Classic)</option>
+            <option value="Clash Squad">Clash Squad (CS 4v4)</option>
+            <option value="Lone Wolf">Lone Wolf</option>
+          </select>
+        </div>
+        <div>
+          <label>Team Format</label>
+          <select id="mType">
+            <option value="SOLO">SOLO</option>
+            <option value="DUO">DUO</option>
+            <option value="SQUAD">SQUAD</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Official Map</label>
+          <select id="mMap">
+            <option value="Bermuda">Bermuda</option>
+            <option value="Bermuda Remastered">Bermuda Remastered</option>
+            <option value="Purgatory">Purgatory</option>
+            <option value="Kalahari">Kalahari</option>
+            <option value="Alpine">Alpine</option>
+            <option value="NeXTerra">NeXTerra</option>
+            <option value="Iron Cage">Iron Cage</option>
+            <option value="Craftland">Craftland</option>
+          </select>
+        </div>
+        <div>
+          <label>Total Room Slots</label>
+          <select id="mSlots">
+            <option value="48">48 Players (Full BR)</option>
+            <option value="30">30 Players</option>
+            <option value="24">24 Players</option>
+            <option value="12">12 Players</option>
+            <option value="8">8 Players (CS 4v4)</option>
+            <option value="4">4 Players</option>
+            <option value="2">2 Players (1v1 Lone Wolf)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Entry Fee (₹)</label>
+          <input type="number" id="mFee" placeholder="20" />
+        </div>
+        <div>
+          <label>Prize Pool (₹)</label>
+          <input type="number" id="mPrize" placeholder="150" />
+        </div>
+      </div>
+
+      <label>Match Date & Time</label>
+      <input type="text" id="mTime" placeholder="e.g. Today at 08:30 PM" />
+
+      <label>YouTube Live Stream URL (Optional)</label>
+      <input type="text" id="mLiveUrl" placeholder="https://youtube.com/live/... ya https://youtu.be/..." />
+
+      <label>Rules & Special Details</label>
+      <textarea id="mDetails" rows="4" placeholder="1. Gun Properties: OFF, Character Skills: YES&#10;2. Prize Pool: 1st - ₹80, 2nd - ₹40, Per Kill - ₹5&#10;3. Emulators strictly not allowed."></textarea>
+
+      <button class="btn-submit" onclick="Admin.createMatch()">Publish Tournament</button>
+    </div>
+  </div>
+
+  <!-- TAB 3: APP BANNERS -->
+  <div id="tab-banners" style="display:none;">
+    <div class="card">
+      <h3><i class="fa-solid fa-image" style="color:var(--gold);"></i> Home Hero Poster (Play. Compete. Win.)</h3>
+      <p style="font-size:11px; color:var(--muted); margin-bottom:12px;">User App ke Home page par jo <b>"Play. Compete. Win."</b> wala card hai, uska background poster yahan se change karein:</p>
+
+      <label>Home Hero Background Image URL</label>
+      <input type="text" id="adminHomeHeroBgInp" placeholder="https://i.ibb.co/... (Direct image link)" />
+
+      <div style="border-radius:12px; overflow:hidden; height:120px; border:1px solid var(--border); margin-bottom:12px; background:#000;">
+        <img id="adminHomeHeroPreview" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" style="width:100%; height:100%; object-fit:cover;" />
+      </div>
+
+      <button class="btn-submit" style="background:linear-gradient(135deg, #ffb703, #fb8500); color:#000;" onclick="Admin.saveHomeHeroBanner()">Update Home Poster Live</button>
+    </div>
+  </div>
+
+  <!-- TAB 4: LEADERBOARD RESULTS -->
+  <div id="tab-results" style="display:none;">
+    <div class="card">
+      <h3><i class="fa-solid fa-medal" style="color:var(--gold);"></i> Publish Match Leaderboard</h3>
+      
+      <label>Select Match</label>
+      <select id="resMatchSelect" onchange="Admin.loadMatchForResults()"></select>
+
+      <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;">
+        <label>Add Player Performance</label>
+        <div class="grid-2">
+          <input type="text" id="pIgn" placeholder="Player IGN" />
+          <input type="number" id="pRank" placeholder="Rank (1, 2, 3...)" />
+        </div>
+        <div class="grid-2">
+          <input type="number" id="pKills" placeholder="Kills" />
+          <input type="number" id="pPrize" placeholder="Prize Won (₹)" />
+        </div>
+        <button class="btn-action" style="width:100%;" onclick="Admin.addPlayerToScoreboard()">+ Add Player To List</button>
+      </div>
+
+      <label>Draft Leaderboard:</label>
+      <table class="lb-table">
+        <thead>
+          <tr><th>Rank</th><th>IGN</th><th>Kills</th><th>Pts</th><th>Prize</th></tr>
+        </thead>
+        <tbody id="tempScoreboardBody">
+          <tr><td colspan="5" style="color:var(--muted);">Koi player add nahi kiya gaya</td></tr>
+        </tbody>
+      </table>
+
+      <button class="btn-submit" style="background:var(--green); color:#000;" onclick="Admin.publishFinalLeaderboard()">Publish Leaderboard & Close Match</button>
+    </div>
+  </div>
+
+  <!-- TAB 5: OFFICIAL BROADCAST -->
+  <div id="tab-broadcast" style="display:none;">
+    <div class="card">
+      <h3><i class="fa-solid fa-bullhorn" style="color:var(--gold);"></i> Send Official Broadcast</h3>
+      
+      <label>Notice Heading</label>
+      <input type="text" id="noticeTitle" placeholder="e.g. Special Mega Giveaway Alert!" />
+
+      <label>Message Content</label>
+      <textarea id="noticeMsg" rows="3" placeholder="Players ke liye official announcement likhein..."></textarea>
+
+      <button class="btn-submit" style="background:linear-gradient(135deg, #ffb703, #fb8500); color:#000;" onclick="Admin.sendBroadcast()">Publish Notice To All Users</button>
+    </div>
+
+    <div class="card">
+      <h3><i class="fa-solid fa-clock-rotate-left" style="color:var(--blue);"></i> Recent Sent Notices</h3>
+      <div id="adminNoticeList"><div style="text-align:center; padding:15px; color:var(--muted);">Loading notices...</div></div>
+    </div>
+  </div>
+
+  <!-- TAB 6: DEPOSITS -->
+  <div id="tab-payments" style="display:none;">
+    <div class="card">
+      <h3><i class="fa-solid fa-money-bill-wave" style="color:var(--green);"></i> Deposit Requests</h3>
+      <div id="adminDepositList"><div style="text-align:center; padding:20px; color:var(--muted);">Checking requests...</div></div>
+    </div>
+  </div>
+
+  <!-- TAB 7: WITHDRAWALS -->
+  <div id="tab-withdrawals" style="display:none;">
+    <div class="card">
+      <h3><i class="fa-solid fa-money-bill-transfer" style="color:var(--gold);"></i> Pending Withdrawal Requests</h3>
+      <div id="adminWithdrawalList"><div style="text-align:center; padding:20px; color:var(--muted);">Checking withdrawal requests...</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- EDIT RULES MODAL -->
+<div id="editRulesModal" class="modal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:12px; font-size:16px;">✏️ Edit Match Rules & Details</h3>
+    <input type="hidden" id="editMatchId" />
+    <label>Rules & Special Details Content</label>
+    <textarea id="editRulesContent" rows="6" placeholder="Match rules update karein..."></textarea>
+    <button class="btn-submit" onclick="Admin.saveEditedRules()">Save & Update Live</button>
+    <button onclick="document.getElementById('editRulesModal').classList.remove('show')" style="width:100%; padding:10px; margin-top:8px; border-radius:10px; background:rgba(255,255,255,0.08); color:#fff; font-weight:bold;">Cancel</button>
+  </div>
+</div>
+
+<!-- VIEW SLOTS MODAL -->
+<div id="adminModal" class="modal">
+  <div class="modal-box">
+    <h3 id="adminModalTitle" style="margin-bottom:12px; font-size:16px;">Player Slot List</h3>
+    <div id="adminModalContent"></div>
+    <button onclick="document.getElementById('adminModal').classList.remove('show')" style="width:100%; padding:10px; margin-top:14px; border-radius:10px; background:rgba(255,255,255,0.08); color:#fff; font-weight:bold;">Close</button>
+  </div>
+</div>
+
+<div id="adminToast" class="admin-toast"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD266Q2FGQ2xNtQFuNPGFUxKbR_MojIqBk",
+  authDomain: "user-clutchx.firebaseapp.com",
+  projectId: "user-clutchx",
+  storageBucket: "user-clutchx.firebasestorage.app",
+  messagingSenderId: "887035306979",
+  appId: "1:887035306979:web:0ca40350c3d490fa95b6d6",
+  measurementId: "G-JN9E63PP4G"
+};
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 🔐 CREDENTIALS FOR ADMIN PANEL
+const REQUIRED_ADMIN_USER = "amreshzx";
+const REQUIRED_ADMIN_PIN = "amresh9341";
+const DEFAULT_HERO = "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80";
+
+function getSmartDefaultBanner(mode){
+  if(mode === 'Lone Wolf') return "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=800&q=80";
+  if(mode === 'Clash Squad') return "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=800&q=80";
+  return "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80";
+}
+
+const AdminAuth = {
+  checkSession(){
+    const isLogged = sessionStorage.getItem("clutchx_admin_logged");
+    if(isLogged === "true"){
+      document.getElementById("admin-auth-view").style.display = "none";
+      document.getElementById("admin-dashboard-view").style.display = "block";
+      Admin.init();
+    } else {
+      document.getElementById("admin-auth-view").style.display = "block";
+      document.getElementById("admin-dashboard-view").style.display = "none";
+    }
+  },
+
+  login(){
+    const userVal = document.getElementById("adminUserInp").value.trim();
+    const pinVal = document.getElementById("adminPinInp").value.trim();
+    const err = document.getElementById("authErrMsg");
+
+    if(userVal === REQUIRED_ADMIN_USER && pinVal === REQUIRED_ADMIN_PIN){
+      err.style.display = "none";
+      sessionStorage.setItem("clutchx_admin_logged", "true");
+      document.getElementById("adminUserInp").value = "";
+      document.getElementById("adminPinInp").value = "";
+      this.checkSession();
+      notify("✅ Welcome Master Admin!");
+    } else {
+      err.style.display = "block";
+    }
+  },
+
+  logout(){
+    sessionStorage.removeItem("clutchx_admin_logged");
+    this.checkSession();
+  }
+};
+
+let cachedTournaments = [];
+let tempLeaderboard = [];
+const PLACEMENT_POINTS = { 1: 12, 2: 9, 3: 8, 4: 7, 5: 6, 6: 5, 7: 4, 8: 3, 9: 2, 10: 1 };
+
+function notify(msg){
+  const el = document.getElementById('adminToast');
+  el.innerText = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function switchTab(t){
+  ['matches','create','banners','results','broadcast','payments','withdrawals'].forEach(id => {
+    const el = document.getElementById('tab-' + id);
+    if(el) el.style.display = (id === t) ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['matches','create','banners','results','broadcast','payments','withdrawals'][i] === t);
+  });
+}
+
+const Admin = {
+  init(){
+    this.listenMatches();
+    this.listenHomeHeroBanner();
+    this.listenAnnouncements();
+    this.listenDeposits();
+    this.listenWithdrawals();
+  },
+
+  listenHomeHeroBanner(){
+    db.collection('app_settings').doc('home_config').onSnapshot(doc => {
+      if(doc.exists){
+        const d = doc.data();
+        const url = d.heroBanner || DEFAULT_HERO;
+        document.getElementById("adminHomeHeroBgInp").value = d.heroBanner || "";
+        document.getElementById("adminHomeHeroPreview").src = url;
+      }
+    });
+  },
+
+  async saveHomeHeroBanner(){
+    const url = document.getElementById("adminHomeHeroBgInp").value.trim();
+    await db.collection('app_settings').doc('home_config').set({
+      heroBanner: url,
+      updatedAt: new Date()
+    }, { merge: true });
+
+    document.getElementById("adminHomeHeroPreview").src = url || DEFAULT_HERO;
+    notify("✅ Home Hero Poster Updated Live!");
+  },
+
+  onModeChange(mode){
+    const slotSelect = document.getElementById('mSlots');
+    const typeSelect = document.getElementById('mType');
+    const mapSelect = document.getElementById('mMap');
+
+    if(mode === 'Lone Wolf'){
+      slotSelect.value = "2";
+      typeSelect.value = "SOLO";
+      mapSelect.value = "Iron Cage";
+    } else if(mode === 'Clash Squad'){
+      slotSelect.value = "8";
+      typeSelect.value = "SQUAD";
+      mapSelect.value = "Bermuda";
+    } else {
+      slotSelect.value = "48";
+      mapSelect.value = "Bermuda";
+    }
+  },
+
+  async createMatch(){
+    const mode = document.getElementById('mMode').value;
+    const banner = document.getElementById('mImage').value.trim() || getSmartDefaultBanner(mode);
+    const title = document.getElementById('mTitle').value.trim();
+    const type = document.getElementById('mType').value;
+    const map = document.getElementById('mMap').value;
+    const slots = Number(document.getElementById('mSlots').value) || 48;
+    const fee = Number(document.getElementById('mFee').value);
+    const prize = Number(document.getElementById('mPrize').value);
+    const time = document.getElementById('mTime').value.trim();
+    const liveStreamUrl = document.getElementById('mLiveUrl').value.trim();
+    const details = document.getElementById('mDetails').value.trim();
+
+    if(!title || !time) return notify("⚠️ Title aur Time enter karein!");
+
+    const finalDetails = details || `1. Gun Properties: OFF, Character Skills: YES\n2. Emulators strictly not allowed.\n3. Official Free Fire ${mode} rules apply.`;
+
+    await db.collection('tournaments').add({
+      banner, title, mode, type, map, slots,
+      entryFee: fee||0, prizePool: prize||0, time,
+      liveStreamUrl: liveStreamUrl || "",
+      details: finalDetails,
+      rules: finalDetails,
+      status: 'upcoming', roomId: "", roomPass: "",
+      joinedPlayers: [], playersList: [], createdAt: new Date()
+    });
+
+    notify("✅ Match Successfully Published!");
+    document.getElementById('mTitle').value = "";
+    document.getElementById('mLiveUrl').value = "";
+    document.getElementById('mDetails').value = "";
+    switchTab('matches');
+  },
+
+  listenMatches(){
+    db.collection('tournaments').orderBy('createdAt', 'desc').onSnapshot(snap => {
+      const container = document.getElementById('adminMatchList');
+      const select = document.getElementById('resMatchSelect');
+      container.innerHTML = "";
+      select.innerHTML = "<option value=''>-- Select Match To Put Result --</option>";
+      cachedTournaments = [];
+
+      snap.forEach(doc => {
+        const m = doc.data();
+        const id = doc.id;
+        cachedTournaments.push({ id, ...m });
+
+        select.innerHTML += `<option value="${id}">${m.title} (${m.status || 'upcoming'})</option>`;
+        const joinedCount = m.playersList ? m.playersList.length : (m.joinedPlayers ? m.joinedPlayers.length : 0);
+        const totalSlots = m.slots || 48;
+
+        container.innerHTML += `
+          <div class="match-item">
+            <img src="${m.banner || getSmartDefaultBanner(m.mode)}" class="match-banner-preview" />
+            <div class="match-item-content">
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <strong>${m.title}</strong>
+                <button class="btn-danger" onclick="Admin.deleteSimpleMatch('${id}')" title="Delete without refund">Delete</button>
+              </div>
+              <div style="font-size:11px; color:var(--muted); line-height:1.6;">
+                <strong>${m.mode || 'Battle Royale'}</strong> | <strong>${m.type}</strong> | Map: <strong>${m.map}</strong><br>
+                Slots: <strong style="color:var(--blue)">${joinedCount}/${totalSlots} Filled</strong> | Fee: ₹${m.entryFee} | Prize: ₹${m.prizePool}<br>
+                Status: <strong style="color:var(--green)">${(m.status || 'upcoming').toUpperCase()}</strong>
+              </div>
+
+              <!-- VIEW SLOTS & EDIT RULES -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;">
+                <button class="btn-action" style="background:rgba(255,183,3,0.15); border:1px solid var(--gold); color:var(--gold);" onclick="Admin.openEditRules('${id}')">
+                  ✏️ Edit Rules
+                </button>
+                <button class="btn-action" style="background:rgba(0,229,255,0.15); border:1px solid var(--blue); color:var(--blue);" onclick="Admin.viewPlayerSlots('${id}')">
+                  📋 View Slots (${joinedCount})
+                </button>
+              </div>
+
+              <button class="btn-hacker-cancel" onclick="Admin.cancelHackerMatch('${id}')">
+                <i class="fa-solid fa-triangle-exclamation"></i> 🚨 Hacker Found (Cancel & 100% Refund)
+              </button>
+
+              <div class="room-box">
+                <div class="grid-2">
+                  <input type="text" id="rid_${id}" placeholder="Room ID" value="${m.roomId || ''}" />
+                  <input type="text" id="rpass_${id}" placeholder="Pass" value="${m.roomPass || ''}" />
+                </div>
+                <input type="text" id="rlive_${id}" placeholder="🔴 YouTube Live Stream URL" value="${m.liveStreamUrl || ''}" style="margin-bottom:8px;" />
+                <button class="btn-action" style="width:100%;" onclick="Admin.updateRoom('${id}')">Save Room ID & Stream Link</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    });
+  },
+
+  async cancelHackerMatch(id){
+    const m = cachedTournaments.find(t => t.id === id);
+    if(!m) return;
+
+    const players = m.playersList || [];
+    const fee = Number(m.entryFee) || 0;
+
+    const confirmMsg = `⚠️ EMERGENCY HACKER ALERT!\n\nKya aap match "${m.title}" ko HACKER ki wajah se cancel karna chahte hain?\n\n• Total Players: ${players.length}\n• Refund Per Player: ₹${fee}\n\nSabhi players ko unka 100% paisa turant unke wallet me wapas chala jayega aur notice broadcast ho jayega.`;
+
+    if(!confirm(confirmMsg)) return;
+
+    try {
+      if(fee > 0 && players.length > 0){
+        for(const p of players){
+          if(p.userId){
+            await db.collection('users').doc(p.userId).update({
+              wallet: firebase.firestore.FieldValue.increment(fee)
+            });
+            await db.collection('users').doc(p.userId).collection('transactions').add({
+              title: `Refund: Match Cancelled (Hacker Detected in ${m.title})`,
+              amount: +fee,
+              date: new Date()
+            });
+          }
+        }
+      }
+
+      await db.collection('announcements').add({
+        title: '⚠️ Hacker Alert: Match Cancelled',
+        message: `Match "${m.title}" lobby me hacker/cheater detect hone ki wajah se cancel kar diya gaya hai. Sabhi joined players ko ₹${fee} unke wallet me 100% refund kar diya gaya hai! Play fair, win fair.`,
+        createdAt: new Date()
+      });
+
+      await db.collection('tournaments').doc(id).delete();
+      notify(`🚨 Match Cancelled & ₹${fee} successfully refunded to all ${players.length} players!`);
+    } catch(err){
+      notify("Error: " + err.message);
+    }
+  },
+
+  async deleteSimpleMatch(id){
+    if(confirm("Bina refund kiye sirf match delete karein?")){
+      await db.collection('tournaments').doc(id).delete();
+      notify("🗑️ Match deleted!");
+    }
+  },
+
+  openEditRules(id){
+    const m = cachedTournaments.find(t => t.id === id);
+    if(!m) return;
+    document.getElementById("editMatchId").value = id;
+    document.getElementById("editRulesContent").value = m.details || m.rules || "";
+    document.getElementById("editRulesModal").classList.add("show");
+  },
+
+  async saveEditedRules(){
+    const id = document.getElementById("editMatchId").value;
+    const updated = document.getElementById("editRulesContent").value.trim();
+    if(!updated) return notify("⚠️ Details khali nahi ho sakti!");
+
+    await db.collection('tournaments').doc(id).update({
+      details: updated,
+      rules: updated
+    });
+
+    document.getElementById("editRulesModal").classList.remove("show");
+    notify("✅ Rules successfully updated!");
+  },
+
+  viewPlayerSlots(matchId){
+    const m = cachedTournaments.find(t => t.id === matchId);
+    if(!m) return;
+
+    document.getElementById('adminModalTitle').innerText = `Slots: ${m.title}`;
+    const list = m.playersList || [];
+
+    if(list.length === 0){
+      document.getElementById('adminModalContent').innerHTML = `<div style="text-align:center; padding:20px; color:var(--muted);">Koi player join nahi hua hai abhi tak.</div>`;
+    } else {
+      let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+      list.forEach(p => {
+        html += `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4); border:1px solid var(--border); padding:10px 14px; border-radius:10px;">
+            <div>
+              <strong style="color:#fff; font-size:13px;">${p.ign || 'Player'}</strong>
+              <div style="font-size:10px; color:var(--muted);">${p.userId ? p.userId.substring(0,8) : ''}</div>
+            </div>
+            <div style="background:var(--green); color:#000; font-weight:900; padding:4px 10px; border-radius:8px; font-size:12px;">
+              SLOT #${p.seat || 1}
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      document.getElementById('adminModalContent').innerHTML = html;
+    }
+    document.getElementById('adminModal').classList.add('show');
+  },
+
+  async updateRoom(id){
+    const rid = document.getElementById(`rid_${id}`).value.trim();
+    const rpass = document.getElementById(`rpass_${id}`).value.trim();
+    const rlive = document.getElementById(`rlive_${id}`).value.trim();
+
+    await db.collection('tournaments').doc(id).update({
+      roomId: rid,
+      roomPass: rpass,
+      liveStreamUrl: rlive,
+      status: rid ? 'live' : 'upcoming'
+    });
+    notify("✅ Saved! Room ID & Live Stream URL updated.");
+  },
+
+  loadMatchForResults(){
+    tempLeaderboard = [];
+    this.renderTempScoreboard();
+  },
+
+  addPlayerToScoreboard(){
+    const ign = document.getElementById('pIgn').value.trim();
+    const rank = Number(document.getElementById('pRank').value);
+    const kills = Number(document.getElementById('pKills').value) || 0;
+    const prize = Number(document.getElementById('pPrize').value) || 0;
+
+    if(!ign || !rank) return notify("⚠️ IGN aur Rank bharna zaroori hai!");
+
+    const placementPts = PLACEMENT_POINTS[rank] || 0;
+    const totalPts = (kills * 1) + placementPts;
+
+    tempLeaderboard.push({ rank, ign, kills, placementPts, totalPts, prize });
+    tempLeaderboard.sort((a,b) => a.rank - b.rank);
+
+    this.renderTempScoreboard();
+
+    document.getElementById('pIgn').value = "";
+    document.getElementById('pRank').value = "";
+    document.getElementById('pKills').value = "";
+    document.getElementById('pPrize').value = "";
+  },
+
+  renderTempScoreboard(){
+    const body = document.getElementById('tempScoreboardBody');
+    if(tempLeaderboard.length === 0){
+      body.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Koi player add nahi kiya gaya</td></tr>`;
+      return;
+    }
+    body.innerHTML = tempLeaderboard.map(p => `
+      <tr>
+        <td>#${p.rank}</td>
+        <td><strong>${p.ign}</strong></td>
+        <td>${p.kills}</td>
+        <td>${p.totalPts}</td>
+        <td style="color:var(--green)">₹${p.prize}</td>
+      </tr>
+    `).join("");
+  },
+
+  async publishFinalLeaderboard(){
+    const matchId = document.getElementById('resMatchSelect').value;
+    if(!matchId) return notify("⚠️ Pehle match select karein!");
+    if(tempLeaderboard.length === 0) return notify("⚠️ Kam se kam ek player ka result enter karein!");
+
+    try {
+      await db.collection('tournaments').doc(matchId).update({
+        status: 'completed',
+        leaderboard: tempLeaderboard
+      });
+
+      for(const p of tempLeaderboard){
+        if(p.prize > 0){
+          const userSnap = await db.collection('users').where('ign', '==', p.ign).limit(1).get();
+          if(!userSnap.empty){
+            const uDoc = userSnap.docs[0];
+            await db.collection('users').doc(uDoc.id).update({
+              wallet: firebase.firestore.FieldValue.increment(p.prize)
+            });
+            await db.collection('users').doc(uDoc.id).collection('transactions').add({
+              title: `Tournament Winning Prize (Rank #${p.rank})`,
+              amount: +p.prize,
+              date: new Date()
+            });
+          }
+        }
+      }
+
+      notify("🎉 Leaderboard Published & Winnings Credited!");
+      tempLeaderboard = [];
+      this.renderTempScoreboard();
+      switchTab('matches');
+    } catch(err){
+      notify("Error: " + err.message);
+    }
+  },
+
+  async sendBroadcast(){
+    const title = document.getElementById('noticeTitle').value.trim() || 'Official Notice';
+    const msg = document.getElementById('noticeMsg').value.trim();
+
+    if(!msg) return notify("⚠️ Announcement message likhein!");
+
+    await db.collection('announcements').add({
+      title,
+      message: msg,
+      createdAt: new Date()
+    });
+
+    notify("📢 Notice Broadcasted to all players!");
+    document.getElementById('noticeMsg').value = "";
+    document.getElementById('noticeTitle').value = "";
+  },
+
+  listenAnnouncements(){
+    db.collection('announcements').orderBy('createdAt', 'desc').limit(10).onSnapshot(snap => {
+      const container = document.getElementById('adminNoticeList');
+      container.innerHTML = "";
+      if(snap.empty){
+        container.innerHTML = `<div style="text-align:center; padding:15px; color:var(--muted);">Koi notice nahi bheja gaya abhi tak.</div>`;
+        return;
+      }
+      snap.forEach(doc => {
+        const n = doc.data();
+        const id = doc.id;
+        container.innerHTML += `
+          <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <strong style="color:var(--gold); font-size:12px;">${n.title}</strong>
+              <button onclick="Admin.deleteNotice('${id}')" style="background:transparent; color:var(--primary); font-size:11px;">Delete</button>
+            </div>
+            <div style="font-size:11px; color:#ddd;">${n.message}</div>
+          </div>
+        `;
+      });
+    });
+  },
+
+  async deleteNotice(id){
+    await db.collection('announcements').doc(id).delete();
+    notify("Notice deleted!");
+  },
+
+  listenDeposits(){
+    db.collection('deposit_requests').where('status', '==', 'PENDING').onSnapshot(snap => {
+      const container = document.getElementById('adminDepositList');
+      container.innerHTML = "";
+      if(snap.empty){ container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--muted);">Koi pending deposit nahi hai.</div>`; return; }
+      snap.forEach(doc => {
+        const d = doc.data();
+        const id = doc.id;
+        container.innerHTML += `
+          <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:10px; margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; font-weight:bold;">
+              <span>${d.ign}</span><span style="color:var(--green)">₹${d.amount}</span>
+            </div>
+            <div style="font-size:11px; color:var(--muted); margin:4px 0;">UTR: <strong style="color:#fff">${d.utr}</strong></div>
+            <div style="display:flex; gap:6px; margin-top:8px;">
+              <button class="btn-action" style="flex:1" onclick="Admin.approveDep('${id}','${d.userId}',${d.amount})">Approve (+₹${d.amount})</button>
+              <button class="btn-danger" style="flex:1" onclick="Admin.rejectDep('${id}')">Reject</button>
+            </div>
+          </div>
+        `;
+      });
+    });
+  },
+
+  async approveDep(id, uid, amt){
+    await db.collection('deposit_requests').doc(id).update({ status: 'APPROVED' });
+    await db.collection('users').doc(uid).update({ wallet: firebase.firestore.FieldValue.increment(amt) });
+    await db.collection('users').doc(uid).collection('transactions').add({
+      title: 'Manual Deposit Approved by Admin',
+      amount: +amt,
+      date: new Date()
+    });
+    notify(`✅ Deposit of ₹${amt} Approved!`);
+  },
+
+  async rejectDep(id){
+    await db.collection('deposit_requests').doc(id).update({ status: 'REJECTED' });
+    notify("Deposit Rejected!");
+  },
+
+  listenWithdrawals(){
+    db.collection('withdrawal_requests').where('status', '==', 'PENDING').onSnapshot(snap => {
+      const container = document.getElementById('adminWithdrawalList');
+      if(!container) return;
+      container.innerHTML = "";
+
+      if(snap.empty){
+        container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--muted);">Koi pending withdrawal request nahi hai.</div>`;
+        return;
+      }
+
+      snap.forEach(doc => {
+        const d = doc.data();
+        const id = doc.id;
+        container.innerHTML += `
+          <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:13px; margin-bottom:4px;">
+              <span>${d.ign || 'Player'} (${d.email})</span>
+              <span style="color:var(--gold); font-size:15px;">₹${d.amount}</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); margin-bottom:6px;">
+              Receiving UPI: <strong style="color:var(--blue); font-size:13px;">${d.upiId}</strong>
+              <button onclick="navigator.clipboard.writeText('${d.upiId}'); notify('UPI ID Copied!');" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:10px; margin-left:6px; color:#fff; cursor:pointer;">Copy</button>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-action" style="flex:1; background:var(--green); color:#000;" onclick="Admin.markWithdrawalPaid('${id}')">
+                ✓ Mark as Paid
+              </button>
+              <button class="btn-danger" style="flex:1;" onclick="Admin.rejectWithdrawal('${id}', '${d.userId}', ${d.amount})">
+                ✕ Reject & Refund
+              </button>
+            </div>
+          </div>
+        `;
+      });
+    });
+  },
+
+  async markWithdrawalPaid(reqId){
+    await db.collection('withdrawal_requests').doc(reqId).update({
+      status: 'COMPLETED',
+      paidAt: new Date()
+    });
+    notify("✅ Payout Marked as COMPLETED!");
+  },
+
+  async rejectWithdrawal(reqId, userId, amount){
+    try {
+      await db.collection('withdrawal_requests').doc(reqId).update({ status: 'REJECTED' });
+      await db.collection('users').doc(userId).update({
+        wallet: firebase.firestore.FieldValue.increment(amount)
+      });
+      await db.collection('users').doc(userId).collection('transactions').add({
+        title: 'Withdrawal Rejected Refund',
+        amount: +amount,
+        date: new Date()
+      });
+      notify(`Refunded ₹${amount} back to player!`);
+    } catch(err){
+      notify("Error: " + err.message);
+    }
+  }
+};
+
+AdminAuth.checkSession();
+</script>
+
+</body>
+</html>
