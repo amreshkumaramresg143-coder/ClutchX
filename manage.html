@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ClutchX Manage</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --bg:#07080b;
+  --card:#12151c;
+  --border:#1f2635;
+  --primary:#ff3038;
+  --green:#00e676;
+  --blue:#00e5ff;
+  --gold:#ffb703;
+  --text:#ffffff;
+  --muted:#8b93a5;
+}
+
+*{ margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,sans-serif; }
+body{ background:radial-gradient(circle at 10% 0%,rgba(0,229,255,.08),transparent 35%), var(--bg); color:var(--text); min-height:100vh; padding-bottom:50px; }
+.manage-container{ max-width:540px; margin:auto; padding:16px; }
+
+#manage-auth-view{
+  max-width:400px;
+  margin:80px auto 20px;
+  padding:32px 24px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:24px;
+  text-align:center;
+  box-shadow:0 10px 40px rgba(0,0,0,0.6);
+}
+.manage-shield{
+  width:64px;
+  height:64px;
+  margin:0 auto 16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:rgba(0,229,255,0.12);
+  border:1px solid var(--blue);
+  color:var(--blue);
+  font-size:26px;
+}
+
+.topbar{ display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--border); margin-bottom:14px; }
+.topbar h2{ font-size:20px; font-weight:900; }
+.topbar h2 span{ color:var(--blue); }
+.badge-manage{ background:rgba(0,229,255,0.12); color:var(--blue); border:1px solid var(--blue); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:bold; }
+
+.nav-pills{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:16px; }
+.pill-btn{ padding:10px 4px; border-radius:12px; background:var(--card); border:1px solid var(--border); color:var(--muted); font-size:11px; font-weight:bold; cursor:pointer; text-align:center; }
+.pill-btn.active{ background:var(--blue); color:#000; border-color:var(--blue); }
+
+.card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:16px; }
+.card h3{ font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+label{ font-size:11px; color:var(--muted); font-weight:bold; display:block; margin-bottom:4px; text-align:left; }
+input, select, textarea{ width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid var(--border); background:rgba(0,0,0,0.4); color:#fff; font-size:13px; outline:none; }
+input:focus, select:focus, textarea:focus{ border-color:var(--blue); }
+
+.btn-submit{ width:100%; padding:12px; background:var(--blue); color:#000; border:none; border-radius:10px; font-size:13px; font-weight:900; cursor:pointer; }
+.btn-gold{ width:100%; padding:12px; background:linear-gradient(135deg, #ffb703, #fb8500); color:#000; border:none; border-radius:10px; font-size:13px; font-weight:900; cursor:pointer; }
+.btn-green{ width:100%; padding:12px; background:linear-gradient(135deg, #00e676, #00c853); color:#051408; border:none; border-radius:10px; font-size:13px; font-weight:900; cursor:pointer; }
+.btn-danger{ background:#dc2626; color:#fff; padding:6px 10px; border-radius:8px; border:none; font-size:11px; font-weight:bold; cursor:pointer; }
+.btn-logout{ background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--muted); padding:5px 10px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; }
+
+.search-box{ position:relative; margin-bottom:14px; }
+.search-box input{ padding-left:36px; margin-bottom:0; }
+.search-box i{ position:absolute; left:12px; top:13px; color:var(--muted); font-size:14px; }
+
+.user-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px; margin-bottom:12px; }
+.user-card.disabled-user{ opacity:0.65; border-color:var(--primary); background:rgba(255,48,56,0.05); }
+.user-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.user-info strong{ font-size:15px; color:#fff; display:block; }
+.user-info span{ font-size:11px; color:var(--muted); word-break:break-all; }
+.user-wallet-badge{ background:rgba(0,230,118,0.12); border:1px solid var(--green); color:var(--green); font-size:12px; font-weight:900; padding:4px 9px; border-radius:8px; }
+
+.user-actions{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06); }
+.btn-u-action{ padding:8px 4px; border-radius:8px; font-size:11px; font-weight:bold; border:none; cursor:pointer; text-align:center; }
+.btn-msg{ background:rgba(0,229,255,0.15); border:1px solid var(--blue); color:var(--blue); }
+.btn-disable{ background:rgba(255,183,3,0.15); border:1px solid var(--gold); color:var(--gold); }
+.btn-delete{ background:rgba(255,48,56,0.15); border:1px solid var(--primary); color:var(--primary); }
+
+.toggle-row{ display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); border:1px solid var(--border); padding:12px 14px; border-radius:12px; margin-bottom:14px; }
+
+.modal{ position:fixed; inset:0; z-index:200; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.7); backdrop-filter:blur(7px); }
+.modal.show{ display:flex; }
+.modal-box{ width:100%; max-width:480px; padding:22px; border-radius:24px 24px 0 0; background:#12151c; border:1px solid var(--border); max-height:85vh; overflow-y:auto; }
+
+.toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(18,21,28,0.96); border:1px solid var(--border); color:#fff; padding:12px 20px; border-radius:14px; font-size:13px; z-index:999; display:none; }
+</style>
+</head>
+
+<body>
+
+<!-- 2-FACTOR MANAGE LOGIN SCREEN -->
+<div id="manage-auth-view">
+  <div class="manage-shield"><i class="fa-solid fa-users-gear"></i></div>
+  <h2 style="font-size:22px; font-weight:900; margin-bottom:6px;">Clutch<span style="color:var(--blue);">X</span> Manage</h2>
+  <p style="font-size:12px; color:var(--muted); margin-bottom:20px;">Enter Manager ID & PIN to access portal.</p>
+
+  <label>Manager User ID</label>
+  <input type="text" id="manageUserInp" placeholder="Enter User ID (amreshzx)" />
+
+  <label>Security PIN</label>
+  <input type="password" id="managePinInp" placeholder="Enter PIN (amresh9341)" onkeypress="if(event.key==='Enter') ManageAuth.login()" />
+
+  <button class="btn-submit" onclick="ManageAuth.login()">Access Portal</button>
+  <div id="authErrMsg" style="font-size:11px; color:var(--primary); margin-top:12px; display:none;">⚠️ Galat User ID ya Security PIN! Dubara check karein.</div>
+</div>
+
+<div class="manage-container" id="manage-main-view" style="display:none;">
+
+  <div class="topbar">
+    <div>
+      <h2>Clutch<span>X</span> Manage</h2>
+      <span class="badge-manage">ADMIN CONTROLLER</span>
+    </div>
+    <button class="btn-logout" onclick="ManageAuth.logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+  </div>
+
+  <div class="nav-pills">
+    <button class="pill-btn active" onclick="switchSection('users')"><i class="fa-solid fa-users"></i> Users</button>
+    <button class="pill-btn" onclick="switchSection('payments')"><i class="fa-solid fa-bolt"></i> Auto Pay UTR</button>
+    <button class="pill-btn" onclick="switchSection('offers')"><i class="fa-solid fa-fire"></i> Offers Tab</button>
+  </div>
+
+  <!-- SECTION 1: USERS -->
+  <div id="sec-users">
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="searchInp" placeholder="Search by IGN, Email ya UID..." oninput="ManageApp.filterUsers()" />
+    </div>
+
+    <div style="font-size:12px; color:var(--muted); margin-bottom:10px; display:flex; justify-content:space-between;">
+      <span>Registered Gamers</span>
+      <span>Total: <strong style="color:var(--blue);" id="userCountText">0</strong></span>
+    </div>
+
+    <div id="userListContainer"><div style="text-align:center; padding:30px; color:var(--muted);">Loading users...</div></div>
+  </div>
+
+  <!-- SECTION 2: AUTO PAYMENT / UTR RECONCILIATION -->
+  <div id="sec-payments" style="display:none;">
+    
+    <div class="card">
+      <h3><i class="fa-solid fa-building-columns" style="color:var(--green);"></i> Add Received Bank UTR</h3>
+      <p style="font-size:11px; color:var(--muted); margin-bottom:12px;">Bank me aaya hua 12-digit UTR aur amount daalein. System turant match karke coins auto-credit karega!</p>
+
+      <div class="grid-2">
+        <div>
+          <label>12-Digit Bank UTR / Ref No.</label>
+          <input type="text" id="bankUtrInp" placeholder="e.g. 428192817291" />
+        </div>
+        <div>
+          <label>Amount Received (₹)</label>
+          <input type="number" id="bankAmtInp" placeholder="e.g. 50" />
+        </div>
+      </div>
+
+      <button class="btn-green" onclick="ManagePayments.addBankUtr()"><i class="fa-solid fa-check-double"></i> Add & Auto-Verify Instantly</button>
+    </div>
+
+    <div class="card">
+      <h3><i class="fa-solid fa-hourglass-half" style="color:var(--gold);"></i> Pending User Deposit Requests</h3>
+      <p style="font-size:11px; color:var(--muted); margin-bottom:10px;">Yeh requests bank statement matching ka intezar kar rahi hain.</p>
+      <div id="pendingUserDepositsContainer"><div style="text-align:center; padding:15px; color:var(--muted);">Checking pending requests...</div></div>
+    </div>
+
+    <div class="card">
+      <h3><i class="fa-solid fa-receipt" style="color:var(--blue);"></i> Manager Verified Bank UTRs</h3>
+      <div id="verifiedBankUtrList"><div style="text-align:center; padding:15px; color:var(--muted);">Loading bank records...</div></div>
+    </div>
+
+  </div>
+
+  <!-- SECTION 3: OFFERS & DYNAMIC TAB -->
+  <div id="sec-offers" style="display:none;">
+    
+    <div class="card">
+      <h3><i class="fa-solid fa-sliders" style="color:var(--blue);"></i> Offers Tab & Design Controller</h3>
+      
+      <div class="toggle-row">
+        <div>
+          <strong style="font-size:13px; display:block;">Offers Tab in User App</strong>
+          <span style="font-size:11px; color:var(--muted);">Profile ke bagal me naya tab dikhana hai ya nahi</span>
+        </div>
+        <input type="checkbox" id="tabStatusCheck" style="width:24px; height:24px; cursor:pointer;" onchange="ManageOffers.saveTabConfig()" />
+      </div>
+
+      <label>Tab Label Name</label>
+      <input type="text" id="tabLabelInp" placeholder="e.g. Offers 🔥 / Special / Mega Deals" value="Offers 🔥" />
+
+      <label>Offers Hero Background Image URL (Poster)</label>
+      <input type="text" id="tabHeroBgInp" placeholder="https://i.ibb.co/... (User app Offers header background)" />
+
+      <button class="btn-submit" onclick="ManageOffers.saveTabConfig()">Save Tab & Banner Settings</button>
+    </div>
+
+    <div class="card">
+      <h3><i class="fa-solid fa-gift" style="color:var(--gold);"></i> Host Customized Offer Match</h3>
+      
+      <label>Match Poster URL (Optional)</label>
+      <input type="text" id="oImage" placeholder="https://i.ibb.co/... (Khali chhodne par auto poster aayega)" />
+
+      <label>Offer Match Title</label>
+      <input type="text" id="oTitle" placeholder="e.g. 50% OFF Lone Wolf 1v1 Sunday Clash" />
+
+      <div class="grid-2">
+        <div>
+          <label>Game Mode</label>
+          <select id="oMode" onchange="ManageOffers.onModeChange(this.value)">
+            <option value="Battle Royale">Battle Royale (Classic)</option>
+            <option value="Clash Squad">Clash Squad (CS 4v4)</option>
+            <option value="Lone Wolf">Lone Wolf</option>
+          </select>
+        </div>
+        <div>
+          <label>Team Format</label>
+          <select id="oType">
+            <option value="SOLO">SOLO</option>
+            <option value="DUO">DUO</option>
+            <option value="SQUAD">SQUAD</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Official Map</label>
+          <select id="oMap">
+            <option value="Bermuda">Bermuda</option>
+            <option value="Bermuda Remastered">Bermuda Remastered</option>
+            <option value="Purgatory">Purgatory</option>
+            <option value="Kalahari">Kalahari</option>
+            <option value="Alpine">Alpine</option>
+            <option value="NeXTerra">NeXTerra</option>
+            <option value="Iron Cage">Iron Cage</option>
+            <option value="Craftland">Craftland</option>
+          </select>
+        </div>
+        <div>
+          <label>Total Slots</label>
+          <select id="oSlots">
+            <option value="48">48 Players (Full BR)</option>
+            <option value="30">30 Players</option>
+            <option value="24">24 Players</option>
+            <option value="12">12 Players</option>
+            <option value="8">8 Players (CS 4v4)</option>
+            <option value="4">4 Players</option>
+            <option value="2">2 Players (Lone Wolf 1v1)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Normal Fee (₹)</label>
+          <input type="number" id="oOriginalFee" placeholder="Normal: 50" />
+        </div>
+        <div>
+          <label>Offer Fee (₹) [Discounted]</label>
+          <input type="number" id="oOfferFee" placeholder="Offer: 15" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Prize Pool (₹)</label>
+          <input type="number" id="oPrize" placeholder="150" />
+        </div>
+        <div>
+          <label>Match Time</label>
+          <input type="text" id="oTime" placeholder="e.g. Today at 09:30 PM" />
+        </div>
+      </div>
+
+      <label>YouTube Live Stream URL (Optional)</label>
+      <input type="text" id="oLiveUrl" placeholder="https://youtube.com/live/... ya https://youtu.be/..." />
+
+      <label>Rules & Special Details</label>
+      <textarea id="oDetails" rows="4" placeholder="Special Offer Match: 70% Discount on entry fee. Headshots only or Standard FF rules apply."></textarea>
+
+      <button class="btn-gold" onclick="ManageOffers.createOfferMatch()">Publish to Offers Tab</button>
+    </div>
+
+    <div class="card">
+      <h3><i class="fa-solid fa-list-check" style="color:var(--green);"></i> Active Offer Matches</h3>
+      <div id="offerMatchesContainer"><div style="text-align:center; padding:15px; color:var(--muted);">Loading offer matches...</div></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- VIEW SLOTS MODAL -->
+<div id="offerSlotsModal" class="modal">
+  <div class="modal-box">
+    <h3 id="offerSlotsTitle" style="margin-bottom:12px; font-size:16px;">Player Slot List</h3>
+    <div id="offerSlotsContent"></div>
+    <button onclick="document.getElementById('offerSlotsModal').classList.remove('show')" style="width:100%; padding:10px; margin-top:14px; border-radius:10px; background:rgba(255,255,255,0.08); color:#fff; font-weight:bold;">Close</button>
+  </div>
+</div>
+
+<!-- EDIT RULES MODAL IN MANAGE APP -->
+<div id="editOfferRulesModal" class="modal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:12px; font-size:16px;">✏️ Edit Offer Rules & Details</h3>
+    <input type="hidden" id="editOfferMatchId" />
+    <label>Rules & Details Content</label>
+    <textarea id="editOfferRulesContent" rows="6"></textarea>
+    <button class="btn-submit" onclick="ManageOffers.saveEditedOfferRules()">Save & Update Live</button>
+    <button onclick="document.getElementById('editOfferRulesModal').classList.remove('show')" style="width:100%; padding:10px; margin-top:8px; border-radius:10px; background:rgba(255,255,255,0.08); color:#fff; font-weight:bold;">Cancel</button>
+  </div>
+</div>
+
+<!-- MESSAGE MODAL -->
+<div id="msgModal" class="modal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:6px; font-size:16px;">Send Personal Message</h3>
+    <div style="font-size:11px; color:var(--muted); margin-bottom:14px;">User: <strong id="msgTargetIgn" style="color:var(--blue);">Gamer</strong></div>
+    
+    <label>Message Subject / Title</label>
+    <input type="text" id="pMsgTitle" placeholder="e.g. Warning / Reward / Notice" />
+
+    <label>Private Message Content</label>
+    <textarea id="pMsgBody" rows="4" placeholder="User ke personal inbox ke liye message likhein..."></textarea>
+
+    <button class="btn-submit" onclick="ManageApp.sendPrivateMessage()">Send Direct Message</button>
+    <button onclick="document.getElementById('msgModal').classList.remove('show')" style="width:100%; padding:10px; margin-top:8px; border-radius:10px; background:rgba(255,255,255,0.08); color:#fff; font-weight:bold;">Cancel</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD266Q2FGQ2xNtQFuNPGFUxKbR_MojIqBk",
+  authDomain: "user-clutchx.firebaseapp.com",
+  projectId: "user-clutchx",
+  storageBucket: "user-clutchx.firebasestorage.app",
+  messagingSenderId: "887035306979",
+  appId: "1:887035306979:web:0ca40350c3d490fa95b6d6",
+  measurementId: "G-JN9E63PP4G"
+};
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 🔐 CREDENTIALS FOR MANAGE PANEL
+const REQUIRED_MANAGE_USER = "amreshzx";
+const REQUIRED_MANAGE_PIN = "amresh9341";
+
+let allUsers = [];
+let cachedOffers = [];
+let selectedTargetUid = null;
+
+function getSmartDefaultBanner(mode){
+  if(mode === 'Lone Wolf') return "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=800&q=80";
+  if(mode === 'Clash Squad') return "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=800&q=80";
+  return "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80";
+}
+
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.innerText = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function switchSection(sec){
+  document.getElementById("sec-users").style.display = (sec === 'users') ? 'block' : 'none';
+  document.getElementById("sec-payments").style.display = (sec === 'payments') ? 'block' : 'none';
+  document.getElementById("sec-offers").style.display = (sec === 'offers') ? 'block' : 'none';
+  document.querySelectorAll(".pill-btn").forEach((b, i) => {
+    b.classList.toggle('active', ['users','payments','offers'][i] === sec);
+  });
+}
+
+const ManageAuth = {
+  checkSession(){
+    if(sessionStorage.getItem("cx_manage_auth") === "true"){
+      document.getElementById("manage-auth-view").style.display = "none";
+      document.getElementById("manage-main-view").style.display = "block";
+      ManageApp.listenUsers();
+      ManagePayments.init();
+      ManageOffers.init();
+    } else {
+      document.getElementById("manage-auth-view").style.display = "block";
+      document.getElementById("manage-main-view").style.display = "none";
+    }
+  },
+
+  login(){
+    const userVal = document.getElementById("manageUserInp").value.trim();
+    const pinVal = document.getElementById("managePinInp").value.trim();
+    const err = document.getElementById("authErrMsg");
+
+    if(userVal === REQUIRED_MANAGE_USER && pinVal === REQUIRED_MANAGE_PIN){
+      sessionStorage.setItem("cx_manage_auth", "true");
+      document.getElementById("manageUserInp").value = "";
+      document.getElementById("managePinInp").value = "";
+      err.style.display = "none";
+      this.checkSession();
+      showToast("Access Granted!");
+    } else {
+      err.style.display = "block";
+    }
+  },
+
+  logout(){
+    sessionStorage.removeItem("cx_manage_auth");
+    this.checkSession();
+  }
+};
+
+const ManageApp = {
+  listenUsers(){
+    db.collection('users').onSnapshot(snap => {
+      allUsers = [];
+      snap.forEach(doc => allUsers.push({ id: doc.id, ...doc.data() }));
+      document.getElementById("userCountText").innerText = allUsers.length;
+      this.renderUsers(allUsers);
+    });
+  },
+
+  filterUsers(){
+    const q = document.getElementById("searchInp").value.toLowerCase().trim();
+    if(!q){
+      this.renderUsers(allUsers);
+      return;
+    }
+    const filtered = allUsers.filter(u => 
+      (u.ign && u.ign.toLowerCase().includes(q)) || 
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.id && u.id.toLowerCase().includes(q))
+    );
+    this.renderUsers(filtered);
+  },
+
+  renderUsers(list){
+    const container = document.getElementById("userListContainer");
+    if(list.length === 0){
+      container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--muted);">Koi user nahi mila.</div>`;
+      return;
+    }
+
+    container.innerHTML = list.map(u => {
+      const isDisabled = u.disabled === true;
+      return `
+        <div class="user-card ${isDisabled ? 'disabled-user' : ''}">
+          <div class="user-header">
+            <div class="user-info">
+              <strong>${u.ign || 'Unnamed Gamer'} ${isDisabled ? '<span style="color:var(--primary); font-size:10px;">[DISABLED]</span>' : ''}</strong>
+              <span>${u.email || 'No Email'}</span>
+              <div style="font-size:10px; color:var(--muted); margin-top:2px;">UID: ${u.id.substring(0,10)}...</div>
+            </div>
+            <div class="user-wallet-badge">₹${u.wallet || 0}</div>
+          </div>
+
+          <div class="user-actions">
+            <button class="btn-u-action btn-msg" onclick="ManageApp.openMsgModal('${u.id}', '${u.ign || 'Gamer'}')">
+              <i class="fa-solid fa-paper-plane"></i> Message
+            </button>
+            <button class="btn-u-action btn-disable" onclick="ManageApp.toggleUserStatus('${u.id}', ${isDisabled})">
+              <i class="fa-solid fa-ban"></i> ${isDisabled ? 'Enable' : 'Disable'}
+            </button>
+            <button class="btn-u-action btn-delete" onclick="ManageApp.deleteUserAccount('${u.id}', '${u.ign || 'Gamer'}')">
+              <i class="fa-solid fa-trash"></i> Delete
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  },
+
+  openMsgModal(uid, ign){
+    selectedTargetUid = uid;
+    document.getElementById("msgTargetIgn").innerText = ign;
+    document.getElementById("pMsgTitle").value = "";
+    document.getElementById("pMsgBody").value = "";
+    document.getElementById("msgModal").classList.add("show");
+  },
+
+  async sendPrivateMessage(){
+    const title = document.getElementById("pMsgTitle").value.trim() || 'Admin Notice';
+    const body = document.getElementById("pMsgBody").value.trim();
+
+    if(!body) return showToast("Message likhna zaroori hai!");
+
+    try {
+      await db.collection('users').doc(selectedTargetUid).collection('personal_messages').add({
+        title,
+        message: body,
+        date: new Date(),
+        read: false
+      });
+
+      document.getElementById("msgModal").classList.remove("show");
+      showToast("Personal message successfully sent!");
+    } catch(err){
+      showToast("Error: " + err.message);
+    }
+  },
+
+  async toggleUserStatus(uid, currentlyDisabled){
+    const nextStatus = !currentlyDisabled;
+    await db.collection('users').doc(uid).update({ disabled: nextStatus });
+    showToast(nextStatus ? "Account Disabled / Suspended!" : "Account Re-activated!");
+  },
+
+  async deleteUserAccount(uid, ign){
+    if(confirm(`Kya aap ${ign} ka pura data permanently delete karna chahte hain?`)){
+      await db.collection('users').doc(uid).delete();
+      showToast("User account permanently deleted!");
+    }
+  }
+};
+
+const ManagePayments = {
+  init(){
+    this.listenPendingDeposits();
+    this.listenVerifiedBankUtrs();
+  },
+
+  async addBankUtr(){
+    const utr = document.getElementById("bankUtrInp").value.trim();
+    const amt = Number(document.getElementById("bankAmtInp").value);
+
+    if(!utr || utr.length < 8) return showToast("⚠️ Valid UTR number daalein!");
+    if(!amt || amt <= 0) return showToast("⚠️ Valid amount daalein!");
+
+    try {
+      const existCheck = await db.collection('verified_bank_utrs').where('utr', '==', utr).get();
+      if(!existCheck.empty){
+        return showToast("⚠️ Yeh UTR pehle se Bank records me jud chuka hai!");
+      }
+
+      const bankDocRef = await db.collection('verified_bank_utrs').add({
+        utr: utr,
+        amount: amt,
+        status: 'AVAILABLE',
+        addedAt: new Date()
+      });
+
+      const waitingReqs = await db.collection('deposit_requests')
+        .where('utr', '==', utr)
+        .where('status', '==', 'PENDING')
+        .get();
+
+      if(!waitingReqs.empty){
+        const reqDoc = waitingReqs.docs[0];
+        const reqData = reqDoc.data();
+
+        await db.collection('deposit_requests').doc(reqDoc.id).update({
+          status: 'AUTO_APPROVED',
+          approvedAt: new Date(),
+          verifiedByUtr: utr
+        });
+
+        await db.collection('users').doc(reqData.userId).update({
+          wallet: firebase.firestore.FieldValue.increment(amt)
+        });
+
+        await db.collection('users').doc(reqData.userId).collection('transactions').add({
+          title: 'Deposit Approved (Auto Matched UTR)',
+          amount: amt,
+          utr: utr,
+          date: new Date()
+        });
+
+        await db.collection('verified_bank_utrs').doc(bankDocRef.id).update({
+          status: 'CLAIMED_BY_USER',
+          claimedBy: reqData.ign || reqData.email,
+          claimedUserId: reqData.userId,
+          claimedAt: new Date()
+        });
+
+        showToast(`🎉 AUTO-MATCH! ₹${amt} instantly ${reqData.ign || 'User'} ke wallet me add ho gaye!`);
+      } else {
+        showToast(`✅ Bank UTR (₹${amt}) successfully registered!`);
+      }
+
+      document.getElementById("bankUtrInp").value = "";
+      document.getElementById("bankAmtInp").value = "";
+    } catch(err){
+      showToast("Error: " + err.message);
+    }
+  },
+
+  listenPendingDeposits(){
+    db.collection('deposit_requests').where('status', '==', 'PENDING').onSnapshot(snap => {
+      const container = document.getElementById("pendingUserDepositsContainer");
+      if(snap.empty){
+        container.innerHTML = `<div style="text-align:center; padding:15px; color:var(--muted);">Koi pending deposit request nahi hai. All clear!</div>`;
+        return;
+      }
+
+      let html = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const id = doc.id;
+        const proofHtml = d.proof ? `<div style="margin-top:4px;"><a href="${d.proof}" target="_blank" style="color:var(--blue); font-size:11px; text-decoration:underline;">📸 View Payment Screenshot</a></div>` : '';
+
+        html += `
+          <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,183,3,0.3); border-radius:12px; padding:12px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div>
+                <strong style="color:#fff; font-size:13px;">${d.ign || 'Player'} (${d.email})</strong>
+                <div style="font-size:12px; color:var(--muted); margin:3px 0;">
+                  Requested Amount: <strong style="color:var(--green); font-size:14px;">₹${d.amount}</strong>
+                </div>
+                <div style="font-size:11px; color:#ddd;">
+                  User Entered UTR: <strong style="color:var(--blue); font-size:12px;">${d.utr}</strong>
+                </div>
+                ${proofHtml}
+              </div>
+              <span style="background:rgba(255,183,3,0.15); border:1px solid var(--gold); color:var(--gold); font-size:10px; font-weight:bold; padding:3px 8px; border-radius:6px;">UNVERIFIED</span>
+            </div>
+
+            <div style="display:flex; gap:6px; margin-top:10px;">
+              <button onclick="ManagePayments.quickAddAndVerify('${d.utr}', ${d.amount}, '${id}', '${d.userId}', '${d.ign || 'Player'}')" style="flex:2; padding:8px; border-radius:8px; background:var(--green); color:#000; font-weight:bold; font-size:11px; border:none; cursor:pointer;">
+                ✓ Bank me aa gaya (Auto Match)
+              </button>
+              <button onclick="ManagePayments.rejectRequest('${id}')" style="flex:1; padding:8px; border-radius:8px; background:rgba(255,48,56,0.15); border:1px solid var(--primary); color:var(--primary); font-weight:bold; font-size:11px; cursor:pointer;">
+                ✕ Reject
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    });
+  },
+
+  async quickAddAndVerify(utr, amt, reqId, userId, ign){
+    if(!confirm(`Kya aapne confirm kar liya hai ki bank me ₹${amt} aa gaya hai? Isse user ko instantly ₹${amt} credit ho jayenge.`)) return;
+
+    try {
+      await db.collection('verified_bank_utrs').add({
+        utr: utr,
+        amount: amt,
+        status: 'CLAIMED_BY_USER',
+        claimedBy: ign,
+        claimedUserId: userId,
+        addedAt: new Date()
+      });
+
+      await db.collection('deposit_requests').doc(reqId).update({
+        status: 'AUTO_APPROVED',
+        approvedAt: new Date(),
+        verifiedByUtr: utr
+      });
+
+      await db.collection('users').doc(userId).update({
+        wallet: firebase.firestore.FieldValue.increment(amt)
+      });
+
+      await db.collection('users').doc(userId).collection('transactions').add({
+        title: 'Deposit Approved (Direct Matched)',
+        amount: amt,
+        utr: utr,
+        date: new Date()
+      });
+
+      showToast(`✅ ₹${amt} credited to ${ign}!`);
+    } catch(err){
+      showToast("Error: " + err.message);
+    }
+  },
+
+  async rejectRequest(reqId){
+    if(!confirm("Kya aap is unverified request ko reject karna chahte hain?")) return;
+    await db.collection('deposit_requests').doc(reqId).update({ status: 'REJECTED' });
+    showToast("Request Rejected!");
+  },
+
+  listenVerifiedBankUtrs(){
+    db.collection('verified_bank_utrs').orderBy('addedAt', 'desc').limit(15).onSnapshot(snap => {
+      const container = document.getElementById("verifiedBankUtrList");
+      if(snap.empty){
+        container.innerHTML = `<div style="text-align:center; padding:15px; color:var(--muted);">Koi bank UTR record nahi hai.</div>`;
+        return;
+      }
+
+      let html = '';
+      snap.forEach(doc => {
+        const b = doc.data();
+        const isClaimed = b.status === 'CLAIMED_BY_USER';
+        html += `
+          <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <strong style="color:var(--blue); font-size:12px;">UTR: ${b.utr}</strong>
+              <div style="font-size:11px; color:var(--muted); margin-top:2px;">
+                Amount: <strong style="color:var(--green);">₹${b.amount}</strong> • ${isClaimed ? `<span style="color:var(--gold);">Claimed by ${b.claimedBy || 'User'}</span>` : '<span style="color:#a1e8ba;">Available for matching</span>'}
+              </div>
+            </div>
+            <span style="font-size:10px; font-weight:bold; padding:3px 8px; border-radius:6px; ${isClaimed ? 'background:rgba(0,230,118,0.15); color:var(--green);' : 'background:rgba(0,229,255,0.15); color:var(--blue);'}">
+              ${isClaimed ? 'MATCHED' : 'READY'}
+            </span>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    });
+  }
+};
+
+const ManageOffers = {
+  init(){
+    this.listenTabConfig();
+    this.listenOfferMatches();
+  },
+
+  onModeChange(mode){
+    const slotSelect = document.getElementById('oSlots');
+    const typeSelect = document.getElementById('oType');
+    const mapSelect = document.getElementById('oMap');
+
+    if(mode === 'Lone Wolf'){
+      slotSelect.value = "2";
+      typeSelect.value = "SOLO";
+      mapSelect.value = "Iron Cage";
+    } else if(mode === 'Clash Squad'){
+      slotSelect.value = "8";
+      typeSelect.value = "SQUAD";
+      mapSelect.value = "Bermuda";
+    } else {
+      slotSelect.value = "48";
+      mapSelect.value = "Bermuda";
+    }
+  },
+
+  listenTabConfig(){
+    db.collection('app_settings').doc('offers_tab').onSnapshot(doc => {
+      if(doc.exists){
+        const d = doc.data();
+        document.getElementById("tabStatusCheck").checked = d.enabled === true;
+        document.getElementById("tabLabelInp").value = d.label || "Offers 🔥";
+        document.getElementById("tabHeroBgInp").value = d.heroBg || "";
+      }
+    });
+  },
+
+  async saveTabConfig(){
+    const isEnabled = document.getElementById("tabStatusCheck").checked;
+    const label = document.getElementById("tabLabelInp").value.trim() || "Offers 🔥";
+    const heroBg = document.getElementById("tabHeroBgInp").value.trim();
+
+    await db.collection('app_settings').doc('offers_tab').set({
+      enabled: isEnabled,
+      label: label,
+      heroBg: heroBg,
+      updatedAt: new Date()
+    });
+
+    showToast("✅ Tab Settings & Hero Background Saved!");
+  },
+
+  async createOfferMatch(){
+    const mode = document.getElementById("oMode").value;
+    const type = document.getElementById("oType").value;
+    const map = document.getElementById("oMap").value;
+    const slots = Number(document.getElementById("oSlots").value) || 48;
+    const banner = document.getElementById("oImage").value.trim() || getSmartDefaultBanner(mode);
+    const title = document.getElementById("oTitle").value.trim();
+    const originalFee = Number(document.getElementById("oOriginalFee").value) || 0;
+    const offerFee = Number(document.getElementById("oOfferFee").value) || 0;
+    const prize = Number(document.getElementById("oPrize").value) || 0;
+    const time = document.getElementById("oTime").value.trim();
+    const liveStreamUrl = document.getElementById("oLiveUrl").value.trim();
+    const details = document.getElementById("oDetails").value.trim();
+
+    if(!title || !time) return showToast("Title aur Time enter karna zaroori hai!");
+
+    const finalDetails = details || `Special Offer ${mode} Match. Play fair.`;
+
+    await db.collection('offer_tournaments').add({
+      banner, title, mode, type, map, slots,
+      originalFee, entryFee: offerFee, prizePool: prize, time,
+      liveStreamUrl: liveStreamUrl || "",
+      details: finalDetails,
+      rules: finalDetails,
+      status: 'upcoming', roomId: "", roomPass: "",
+      joinedPlayers: [], playersList: [], createdAt: new Date()
+    });
+
+    showToast("🎉 Custom Offer Match Published!");
+    document.getElementById("oTitle").value = "";
+    document.getElementById("oLiveUrl").value = "";
+    document.getElementById("oDetails").value = "";
+  },
+
+  listenOfferMatches(){
+    db.collection('offer_tournaments').orderBy('createdAt', 'desc').onSnapshot(snap => {
+      const container = document.getElementById("offerMatchesContainer");
+      cachedOffers = [];
+      if(snap.empty){
+        container.innerHTML = `<div style="text-align:center; padding:15px; color:var(--muted);">Koi active offer match nahi hai.</div>`;
+        return;
+      }
+
+      let html = '';
+      snap.forEach(doc => {
+        const m = doc.data();
+        const id = doc.id;
+        cachedOffers.push({ id, ...m });
+        const joinedCount = m.playersList ? m.playersList.length : 0;
+        const totalSlots = m.slots || 48;
+
+        html += `
+          <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div>
+                <strong style="color:var(--gold); font-size:14px;">${m.title}</strong>
+                <div style="font-size:11px; color:var(--muted); margin-top:2px;">
+                  <strong>${m.mode || 'BR'} (${m.type || 'SOLO'})</strong> | Map: <strong>${m.map}</strong><br>
+                  Slots: <strong style="color:var(--blue);">${joinedCount}/${totalSlots}</strong> | Fee: <del style="color:var(--primary);">₹${m.originalFee}</del> <strong style="color:var(--green);">₹${m.entryFee}</strong> | Prize: ₹${m.prizePool}
+                </div>
+              </div>
+              <button class="btn-danger" onclick="ManageOffers.cancelAndRefundOffer('${id}')" title="Auto Refund all players">Cancel & Refund</button>
+            </div>
+
+            <!-- VIEW SLOTS & EDIT RULES -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;">
+              <button class="btn-u-action btn-disable" onclick="ManageOffers.openEditOfferRules('${id}')">✏️ Edit Rules</button>
+              <button class="btn-u-action btn-msg" onclick="ManageOffers.viewOfferSlots('${id}')">📋 View Slots (${joinedCount})</button>
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;">
+              <input type="text" id="orid_${id}" placeholder="Room ID" value="${m.roomId || ''}" style="margin-bottom:0; padding:6px;" />
+              <input type="text" id="orpass_${id}" placeholder="Pass" value="${m.roomPass || ''}" style="margin-bottom:0; padding:6px;" />
+            </div>
+            <input type="text" id="orlive_${id}" placeholder="🔴 Live Stream URL" value="${m.liveStreamUrl || ''}" style="margin-top:6px; margin-bottom:0; padding:6px;" />
+            <button class="btn-submit" style="padding:7px; margin-top:6px; font-size:11px;" onclick="ManageOffers.pushOfferRoom('${id}')">Save Room & Live Stream</button>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    });
+  },
+
+  async cancelAndRefundOffer(id){
+    const m = cachedOffers.find(t => t.id === id);
+    if(!m) return;
+
+    const players = m.playersList || [];
+    const fee = Number(m.entryFee) || 0;
+
+    if(!confirm(`Kya aap offer match "${m.title}" cancel karna chahte hain? Is match ke sabhi ${players.length} players ko ₹${fee} unke wallet me auto-refund ho jayenge.`)) return;
+
+    try {
+      if(fee > 0 && players.length > 0){
+        for(const p of players){
+          if(p.userId){
+            await db.collection('users').doc(p.userId).update({
+              wallet: firebase.firestore.FieldValue.increment(fee)
+            });
+            await db.collection('users').doc(p.userId).collection('transactions').add({
+              title: `Offer Match Cancelled Refund (${m.title})`,
+              amount: +fee,
+              date: new Date()
+            });
+          }
+        }
+      }
+
+      await db.collection('offer_tournaments').doc(id).delete();
+      showToast(`✅ Offer Match Cancelled & ₹${fee} refunded to all ${players.length} players!`);
+    } catch(err){
+      showToast("Error: " + err.message);
+    }
+  },
+
+  viewOfferSlots(id){
+    const m = cachedOffers.find(t => t.id === id);
+    if(!m) return;
+
+    document.getElementById('offerSlotsTitle').innerText = `Slots: ${m.title}`;
+    const list = m.playersList || [];
+
+    if(list.length === 0){
+      document.getElementById('offerSlotsContent').innerHTML = `<div style="text-align:center; padding:20px; color:var(--muted);">Koi player join nahi hua hai abhi tak.</div>`;
+    } else {
+      let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+      list.forEach(p => {
+        html += `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4); border:1px solid var(--border); padding:10px 14px; border-radius:10px;">
+            <div>
+              <strong style="color:#fff; font-size:13px;">${p.ign || 'Player'}</strong>
+              <div style="font-size:10px; color:var(--muted);">${p.userId ? p.userId.substring(0,8) : ''}</div>
+            </div>
+            <div style="background:var(--green); color:#000; font-weight:900; padding:4px 10px; border-radius:8px; font-size:12px;">
+              SLOT #${p.seat || 1}
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      document.getElementById('offerSlotsContent').innerHTML = html;
+    }
+    document.getElementById('offerSlotsModal').classList.add('show');
+  },
+
+  openEditOfferRules(id){
+    const m = cachedOffers.find(t => t.id === id);
+    if(!m) return;
+    document.getElementById("editOfferMatchId").value = id;
+    document.getElementById("editOfferRulesContent").value = m.details || m.rules || "";
+    document.getElementById("editOfferRulesModal").classList.add("show");
+  },
+
+  async saveEditedOfferRules(){
+    const id = document.getElementById("editOfferMatchId").value;
+    const updated = document.getElementById("editOfferRulesContent").value.trim();
+    if(!updated) return showToast("Details khali nahi ho sakti!");
+
+    await db.collection('offer_tournaments').doc(id).update({
+      details: updated,
+      rules: updated
+    });
+
+    document.getElementById("editOfferRulesModal").classList.remove("show");
+    showToast("✅ Offer Match Rules Updated!");
+  },
+
+  async pushOfferRoom(id){
+    const rid = document.getElementById(`orid_${id}`).value.trim();
+    const rpass = document.getElementById(`orpass_${id}`).value.trim();
+    const rlive = document.getElementById(`orlive_${id}`).value.trim();
+
+    await db.collection('offer_tournaments').doc(id).update({ 
+      roomId: rid, 
+      roomPass: rpass, 
+      liveStreamUrl: rlive,
+      status: rid ? 'live' : 'upcoming' 
+    });
+    showToast("✅ Room credentials & Live Stream pushed!");
+  }
+};
+
+ManageAuth.checkSession();
+</script>
+
+</body>
+</html>
